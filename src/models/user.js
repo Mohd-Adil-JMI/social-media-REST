@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 var bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const arrayUniquePlugin = require("mongoose-unique-array");
+const Post = require("./post");
 
 const userSchema = mongoose.Schema(
   {
@@ -71,6 +72,13 @@ const userSchema = mongoose.Schema(
     timestamps: true,
   }
 );
+
+userSchema.virtual('posts',{
+    ref: 'Post',
+    localField:'_id',
+    foreignField:'owner'
+})
+
 userSchema.methods.toJSON = function () {
   const user = this;
   userObject = user.toObject();
@@ -130,6 +138,12 @@ userSchema.pre("save", async function (next) {
   }
   next();
 });
+//delete user tasks when user is removed
+userSchema.pre('remove', async function (next){
+    const user=this
+    await Post.deleteMany({owner:user._id})
+    next()
+})
 userSchema.plugin(arrayUniquePlugin);
 const User = mongoose.model("User", userSchema);
 

@@ -107,4 +107,13 @@ router.post("/users/logoutall", auth, async (req, res) => {
     res.status(500).send;
   }
 });
+
+router.delete("/users/me", auth, async (req, res) => {
+  try {
+    await req.user.remove();
+    res.send(req.user);
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
 module.exports = router;
