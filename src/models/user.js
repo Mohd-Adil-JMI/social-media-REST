@@ -73,11 +73,11 @@ const userSchema = mongoose.Schema(
   }
 );
 
-userSchema.virtual('posts',{
-    ref: 'Post',
-    localField:'_id',
-    foreignField:'owner'
-})
+userSchema.virtual("posts", {
+  ref: "Post",
+  localField: "_id",
+  foreignField: "owner",
+});
 
 userSchema.methods.toJSON = function () {
   const user = this;
@@ -138,12 +138,22 @@ userSchema.pre("save", async function (next) {
   }
   next();
 });
-//delete user tasks when user is removed
-userSchema.pre('remove', async function (next){
-    const user=this
-    await Post.deleteMany({owner:user._id})
-    next()
-})
+//delete user posts when user is removed
+userSchema.pre("remove", async function (next) {
+  const user = this;
+  await Post.deleteMany({ owner: user._id });
+  // remove followers and followings
+  await User.updateMany(
+    { followers: { $elemMatch: { username: user.username } } },
+    { $pull: { followers: { username: user.username } } }
+  );
+  await User.updateMany(
+    { followings: { $elemMatch: { username: user.username } } },
+    { $pull: { followings: { username: user.username } } }
+  );
+
+  next();
+});
 userSchema.plugin(arrayUniquePlugin);
 const User = mongoose.model("User", userSchema);
 
