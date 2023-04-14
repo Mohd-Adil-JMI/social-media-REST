@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 var bcrypt = require("bcryptjs");
 const validator = require("validator");
 const jwt = require("jsonwebtoken");
-const Post = require("./User");
+const Post = require("./Post");
 const Follow = require("./Follow");
 const Like = require("./Like");
 
@@ -86,6 +86,12 @@ userSchema.virtual("followers", {
   localField: "_id",
   foreignField: "following",
 });
+
+userSchema.virtual("liked", {
+  ref: "Like",
+  localField: "_id",
+  foreignField: "user",
+});
 userSchema.methods.toJSON = function () {
   const user = this;
   userObject = user.toObject();
@@ -106,11 +112,11 @@ userSchema.methods.generateAuthToken = async function () {
 userSchema.statics.findByCredentials = async (username, password) => {
   const user = await User.findOne({ username });
   if (!user) {
-    throw new Error("Unable to login");
+    throw new Error("No user found");
   }
   const isMatch = await bcrypt.compare(password, user.password);
   if (!isMatch) {
-    throw new Error("Unable to login");
+    throw new Error("Password is incorrect");
   }
   return user;
 };

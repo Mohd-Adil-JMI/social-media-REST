@@ -33,6 +33,46 @@ router.get("/users/me", auth, async (req, res) => {
   res.json(req.user);
 });
 
+router.patch("/users/me", auth, async (req, res) => {
+  const updates = Object.keys(req.body);
+  const allowedupdates = ["name", "username", "email", "age"];
+  const isValidOperation = updates.every((update) =>
+    allowedupdates.includes(update)
+  );
+  if (!isValidOperation) {
+    return res.status(400).send({ error: "Invalid updates!" });
+  }
+  try {
+    updates.forEach((update) => (req.user[update] = req.body[update]));
+    await req.user.save();
+    res.json(req.user);
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+router.patch("/users/me/change-password", auth, async (req, res) => {
+  try {
+    const user = await User.findByCredentials(
+      req.user.username,
+      req.body.oldPassword
+    );
+    user.password = req.body.newPassword;
+    await user.save();
+    res.json(user);
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+router.get("/users/me/liked", auth, async (req, res) => {
+  try {
+    await req.user.populate({ path: "liked" });
+    res.json(req.user.liked);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 router.get("/users/:username", async (req, res) => {
   const username = req.params.username;
   try {
@@ -77,7 +117,7 @@ router.post("/users/:username/follow", auth, async (req, res) => {
   }
 });
 
-router.delete("/users/:username/follow", auth, async (req, res) => {
+router.delete("/users/:username/unfollow", auth, async (req, res) => {
   const username = req.params.username;
   try {
     const follow = await req.user.unfollow(username);

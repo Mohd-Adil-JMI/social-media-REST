@@ -28,12 +28,12 @@ router.get("/posts", auth, async (req, res) => {
   }
 });
 
-router.get("/posts/:id", auth, async (req, res) => {
+router.get("/posts/:id", async (req, res) => {
   const _id = req.params.id;
   try {
-    const post = await Post.findOne({ _id, owner: req.user._id });
+    const post = await Post.findOne({ _id });
     if (!post) {
-      return res.status(404).send();
+      return res.status(404).json({ error: "Post not found" });
     }
     res.send(post);
   } catch (e) {
@@ -72,7 +72,7 @@ router.delete("/posts/:id", auth, async (req, res) => {
       owner: req.user._id,
     });
     if (!post) {
-      res.status(404).send();
+      res.status(404).json({ error: "Post not found" });
     }
     res.send(post);
   } catch (e) {
@@ -84,12 +84,11 @@ router.post("/posts/:id/like", auth, async (req, res) => {
   try {
     const post = await Post.findOne({
       _id: req.params.id,
-      owner: req.user._id,
     });
     if (!post) {
       return res.status(404).send();
     }
-    const like = new Like({ owner: req.user._id, post: post._id });
+    const like = new Like({ user: req.user._id, post: post._id });
     await like.save();
     res.status(201).json(like);
   } catch (e) {
@@ -101,13 +100,12 @@ router.post("/posts/:id/unlike", auth, async (req, res) => {
   try {
     const post = await Post.findOne({
       _id: req.params.id,
-      owner: req.user._id,
     });
     if (!post) {
       return res.status(404).json({ error: "Post not found" });
     }
     const like = await Like.findOneAndDelete({
-      owner: req.user._id,
+      user: req.user._id,
       post: post._id,
     });
     if (!like) {
@@ -116,6 +114,21 @@ router.post("/posts/:id/unlike", auth, async (req, res) => {
     res.status(201).json(like);
   } catch (e) {
     res.status(400).json({ error: e.message });
+  }
+});
+
+router.get("/posts/:id/likes", async (req, res) => {
+  try {
+    const post = await Post.findOne({
+      _id: req.params.id,
+    });
+    if (!post) {
+      return res.status(404).json({ error: "Post not found" });
+    }
+    await post.populate({ path: "likes" });
+    res.send(post.likes);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
   }
 });
 
