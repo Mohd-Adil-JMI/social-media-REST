@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const Like = require("./Like");
 const postSchema = mongoose.Schema(
   {
     description: {
@@ -16,5 +17,17 @@ const postSchema = mongoose.Schema(
     timestamps: true,
   }
 );
+
+postSchema.virtual("likes", {
+  ref: "Like",
+  localField: "_id",
+  foreignField: "post",
+});
+
+postSchema.pre("remove", async function (next) {
+  const post = this;
+  await Like.deleteMany({ post: post._id });
+  next();
+});
 const Post = mongoose.model("Post", postSchema);
 module.exports = Post;

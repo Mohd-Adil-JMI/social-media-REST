@@ -1,7 +1,7 @@
 const express = require("express");
 const auth = require("../middleware/auth");
 const router = new express.Router();
-const User = require("../models/user");
+const User = require("../models/User");
 router.get("/users", (req, res) => {
   res.status(200).json({ message: "User Router" });
 });
@@ -47,6 +47,7 @@ router.get("/users/:username/followers", async (req, res) => {
   const username = req.params.username;
   try {
     const user = await User.findOne({ username });
+    await user.populate({ path: "followers" });
     const followers = user.followers;
     res.status(200).json(followers);
   } catch (e) {
@@ -58,6 +59,7 @@ router.get("/users/:username/followings", async (req, res) => {
   const username = req.params.username;
   try {
     const user = await User.findOne({ username });
+    await user.populate({ path: "followings" });
     const followings = user.followings;
     res.status(200).json(followings);
   } catch (e) {
@@ -68,8 +70,8 @@ router.get("/users/:username/followings", async (req, res) => {
 router.post("/users/:username/follow", auth, async (req, res) => {
   const username = req.params.username;
   try {
-    const user = await req.user.follow(username);
-    res.status(200).json(user);
+    const follow = await req.user.follow(username);
+    res.status(200).json({ user: req.user, follow });
   } catch (e) {
     res.status(400).json({ error: e.message });
   }
@@ -78,8 +80,8 @@ router.post("/users/:username/follow", auth, async (req, res) => {
 router.delete("/users/:username/follow", auth, async (req, res) => {
   const username = req.params.username;
   try {
-    const user = await req.user.unfollow(username);
-    res.status(200).json(user);
+    const follow = await req.user.unfollow(username);
+    res.status(200).json({ user: req.user, follow });
   } catch (e) {
     res.status(400).json({ error: e.message });
   }

@@ -1,8 +1,10 @@
 const mongoose = require("mongoose");
 var bcrypt = require("bcryptjs");
+const validator = require("validator");
 const jwt = require("jsonwebtoken");
-const arrayUniquePlugin = require("mongoose-unique-array");
-const Post = require("./post");
+const Post = require("./User");
+const Follow = require("./Follow");
+const Like = require("./Like");
 
 const userSchema = mongoose.Schema(
   {
@@ -18,16 +20,26 @@ const userSchema = mongoose.Schema(
       trim: true,
       lowercase: true,
     },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+      lowercase: true,
+      validate(value) {
+        if (!validator.isEmail(value)) {
+          throw new Error("Email is invalid");
+        }
+      },
+    },
     password: {
       type: String,
-      trim: true,
       required: true,
       minlength: 7,
+      trim: true,
       validate(value) {
-        if (value.length < 6) {
-          throw new Error("Password is too short!");
-        } else if (value == "password") {
-          throw new Error("Password cannot be password!");
+        if (value.toLowerCase().includes("password")) {
+          throw new Error("Password cannot contain 'password'");
         }
       },
     },
@@ -36,26 +48,10 @@ const userSchema = mongoose.Schema(
       default: 0,
       validate(value) {
         if (value < 0) {
-          throw new Error("Age is invalid!");
+          throw new Error("Age must be a positive number");
         }
       },
     },
-    followers: [
-      {
-        username: {
-          type: String,
-          unique: true,
-        },
-      },
-    ],
-    followings: [
-      {
-        username: {
-          type: String,
-          unique: true,
-        },
-      },
-    ],
     tokens: [
       {
         token: {
@@ -79,6 +75,17 @@ userSchema.virtual("posts", {
   foreignField: "owner",
 });
 
+userSchema.virtual("followings", {
+  ref: "Follow",
+  localField: "_id",
+  foreignField: "follower",
+});
+
+userSchema.virtual("followers", {
+  ref: "Follow",
+  localField: "_id",
+  foreignField: "following",
+});
 userSchema.methods.toJSON = function () {
   const user = this;
   userObject = user.toObject();
@@ -109,27 +116,30 @@ userSchema.statics.findByCredentials = async (username, password) => {
 };
 userSchema.methods.follow = async function (username) {
   const owner = this;
-  if (owner.username === username) throw new Error("Bad request");
+  if (owner.username === username) throw new Error("Bad request"); // can't follow self
   const user = await User.findOne({ username });
-  owner.followings = owner.followings.concat({ username });
-  user.followers = user.followers.concat({ username: owner.username });
-  await owner.save();
-  await user.save();
-  return owner;
+  if (!user) throw new Error("No user found");
+  const exist = await Follow.findOne({
+    follower: owner._id,
+    following: user._id,
+  });
+  if (exist) throw new Error("Already following");
+  const follow = new Follow({ follower: owner._id, following: user._id });
+  await follow.save();
+  return follow;
 };
 userSchema.methods.unfollow = async function (username) {
   const owner = this;
   if (owner.username === username) throw new Error("Bad request");
   const user = await User.findOne({ username });
-  owner.followings = owner.followings.filter((following) => {
-    return following.username !== username;
+  if (!user) throw new Error("No user found");
+  const follow = await Follow.findOne({
+    follower: owner._id,
+    following: user._id,
   });
-  user.followers = user.followers.filter((follower) => {
-    return follower.username !== owner.username;
-  });
-  await owner.save();
-  await user.save();
-  return owner;
+  if (!follow) throw new Error("No follow found");
+  await follow.remove();
+  return follow;
 };
 userSchema.pre("save", async function (next) {
   const user = this;
@@ -142,19 +152,12 @@ userSchema.pre("save", async function (next) {
 userSchema.pre("remove", async function (next) {
   const user = this;
   await Post.deleteMany({ owner: user._id });
-  // remove followers and followings
-  await User.updateMany(
-    { followers: { $elemMatch: { username: user.username } } },
-    { $pull: { followers: { username: user.username } } }
-  );
-  await User.updateMany(
-    { followings: { $elemMatch: { username: user.username } } },
-    { $pull: { followings: { username: user.username } } }
-  );
-
+  await Like.deleteMany({ user: user._id });
+  // remove user from Follow
+  await Follow.deleteMany({ follower: user._id });
+  await Follow.deleteMany({ following: user._id });
   next();
 });
-userSchema.plugin(arrayUniquePlugin);
 const User = mongoose.model("User", userSchema);
 
 module.exports = User;

@@ -1,6 +1,7 @@
 const express = require("express");
 const auth = require("../middleware/auth");
-const Post = require("../models/post");
+const Post = require("../models/Post");
+const Like = require("../models/Like");
 const router = new express.Router();
 
 router.post("/posts", auth, async (req, res) => {
@@ -78,4 +79,44 @@ router.delete("/posts/:id", auth, async (req, res) => {
     res.status(400).json({ error: e.message });
   }
 });
+
+router.post("/posts/:id/like", auth, async (req, res) => {
+  try {
+    const post = await Post.findOne({
+      _id: req.params.id,
+      owner: req.user._id,
+    });
+    if (!post) {
+      return res.status(404).send();
+    }
+    const like = new Like({ owner: req.user._id, post: post._id });
+    await like.save();
+    res.status(201).json(like);
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+router.post("/posts/:id/unlike", auth, async (req, res) => {
+  try {
+    const post = await Post.findOne({
+      _id: req.params.id,
+      owner: req.user._id,
+    });
+    if (!post) {
+      return res.status(404).json({ error: "Post not found" });
+    }
+    const like = await Like.findOneAndDelete({
+      owner: req.user._id,
+      post: post._id,
+    });
+    if (!like) {
+      return res.status(404).json({ error: "Like not found" });
+    }
+    res.status(201).json(like);
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
 module.exports = router;
