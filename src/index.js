@@ -11,7 +11,7 @@ app.use("/api", UserRouter);
 app.use("/api", PostRouter);
 app.use("/api", FeedRouter);
 app.get("*", (req, res) => {
-  res.send("Hello from Social Media");
+  res.status(200).send("Hello from Social Media");
 });
 app.listen(PORT, () => {
   console.log(`App Listening at http://localhost:${PORT}`);

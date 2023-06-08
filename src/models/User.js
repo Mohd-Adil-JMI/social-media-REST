@@ -52,14 +52,23 @@ const userSchema = mongoose.Schema(
         }
       },
     },
-    tokens: [
-      {
-        token: {
-          type: String,
-          required: true,
+    tokens: {
+      type: [
+        {
+          token: {
+            type: String,
+            required: true,
+          },
         },
+      ],
+      validate(value) {
+        if (value.length > 5) {
+          throw new Error(
+            "You have exceeded the maximum number of sessions allowed. Please log out of one of your other devices and try again."
+          );
+        }
       },
-    ],
+    },
     avatar: {
       type: Buffer,
     },
@@ -92,6 +101,13 @@ userSchema.virtual("liked", {
   localField: "_id",
   foreignField: "user",
 });
+
+userSchema.virtual("commented", {
+  ref: "Comment",
+  localField: "_id",
+  foreignField: "user",
+});
+
 userSchema.methods.toJSON = function () {
   const user = this;
   userObject = user.toObject();
@@ -159,6 +175,7 @@ userSchema.pre("remove", async function (next) {
   const user = this;
   await Post.deleteMany({ owner: user._id });
   await Like.deleteMany({ user: user._id });
+  await Comment.deleteMany({ user: user._id });
   // remove user from Follow
   await Follow.deleteMany({ follower: user._id });
   await Follow.deleteMany({ following: user._id });

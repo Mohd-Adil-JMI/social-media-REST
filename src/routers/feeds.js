@@ -17,7 +17,7 @@ router.get("/feeds", auth, async (req, res) => {
       .populate("owner", ["name", "username", "avatar"])
       .sort({ createdAt: -1 });
 
-    res.send(posts);
+    res.status(200).json(posts);
   } catch (err) {
     console.error(err.message);
     res.status(500).json({ error: "Server Error" });

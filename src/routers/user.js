@@ -40,7 +40,7 @@ router.patch("/users/me", auth, async (req, res) => {
     allowedupdates.includes(update)
   );
   if (!isValidOperation) {
-    return res.status(400).send({ error: "Invalid updates!" });
+    return res.status(400).json({ error: "Invalid updates!" });
   }
   try {
     updates.forEach((update) => (req.user[update] = req.body[update]));
@@ -77,6 +77,8 @@ router.get("/users/:username", async (req, res) => {
   const username = req.params.username;
   try {
     const user = await User.findOne({ username });
+    if (!user)
+      return res.status(404).json({ error: 'User not found' })
     res.status(200).json(user);
   } catch (e) {
     res.status(400).json({ error: e.message });
@@ -133,9 +135,9 @@ router.post("/users/logout", auth, async (req, res) => {
       return token.token !== req.token;
     });
     await req.user.save();
-    res.send();
+    res.json({ message: "Logout successfully"});
   } catch (e) {
-    res.status(500).send();
+    res.status(500).json({ error: e.message});
   }
 });
 
@@ -143,16 +145,16 @@ router.post("/users/logoutall", auth, async (req, res) => {
   try {
     req.user.tokens = [];
     await req.user.save();
-    res.send();
+    res.json({ message: "Logout successfully"});
   } catch (e) {
-    res.status(500).send;
+    res.status(500).json({ error: e.message});
   }
 });
 
 router.delete("/users/me", auth, async (req, res) => {
   try {
     await req.user.remove();
-    res.send(req.user);
+    res.json(req.user);
   } catch (e) {
     res.status(400).json({ error: e.message });
   }
