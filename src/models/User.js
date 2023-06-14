@@ -1,10 +1,10 @@
-const mongoose = require("mongoose");
-var bcrypt = require("bcryptjs");
-const validator = require("validator");
-const jwt = require("jsonwebtoken");
-const Post = require("./Post");
-const Follow = require("./Follow");
-const Like = require("./Like");
+const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
+const validator = require('validator');
+const jwt = require('jsonwebtoken');
+const Post = require('./Post');
+const Follow = require('./Follow');
+const Like = require('./Like');
 
 const userSchema = mongoose.Schema(
   {
@@ -28,7 +28,7 @@ const userSchema = mongoose.Schema(
       lowercase: true,
       validate(value) {
         if (!validator.isEmail(value)) {
-          throw new Error("Email is invalid");
+          throw new Error('Email is invalid');
         }
       },
     },
@@ -38,7 +38,7 @@ const userSchema = mongoose.Schema(
       minlength: 7,
       trim: true,
       validate(value) {
-        if (value.toLowerCase().includes("password")) {
+        if (value.toLowerCase().includes('password')) {
           throw new Error("Password cannot contain 'password'");
         }
       },
@@ -48,7 +48,7 @@ const userSchema = mongoose.Schema(
       default: 0,
       validate(value) {
         if (value < 0) {
-          throw new Error("Age must be a positive number");
+          throw new Error('Age must be a positive number');
         }
       },
     },
@@ -64,7 +64,7 @@ const userSchema = mongoose.Schema(
       validate(value) {
         if (value.length > 5) {
           throw new Error(
-            "You have exceeded the maximum number of sessions allowed. Please log out of one of your other devices and try again."
+            'You have exceeded the maximum number of sessions allowed. Please log out of one of your other devices and try again.'
           );
         }
       },
@@ -78,34 +78,34 @@ const userSchema = mongoose.Schema(
   }
 );
 
-userSchema.virtual("posts", {
-  ref: "Post",
-  localField: "_id",
-  foreignField: "owner",
+userSchema.virtual('posts', {
+  ref: 'Post',
+  localField: '_id',
+  foreignField: 'owner',
 });
 
-userSchema.virtual("followings", {
-  ref: "Follow",
-  localField: "_id",
-  foreignField: "follower",
+userSchema.virtual('followings', {
+  ref: 'Follow',
+  localField: '_id',
+  foreignField: 'follower',
 });
 
-userSchema.virtual("followers", {
-  ref: "Follow",
-  localField: "_id",
-  foreignField: "following",
+userSchema.virtual('followers', {
+  ref: 'Follow',
+  localField: '_id',
+  foreignField: 'following',
 });
 
-userSchema.virtual("liked", {
-  ref: "Like",
-  localField: "_id",
-  foreignField: "user",
+userSchema.virtual('liked', {
+  ref: 'Like',
+  localField: '_id',
+  foreignField: 'user',
 });
 
-userSchema.virtual("commented", {
-  ref: "Comment",
-  localField: "_id",
-  foreignField: "user",
+userSchema.virtual('commented', {
+  ref: 'Comment',
+  localField: '_id',
+  foreignField: 'user',
 });
 
 userSchema.methods.toJSON = function () {
@@ -128,50 +128,50 @@ userSchema.methods.generateAuthToken = async function () {
 userSchema.statics.findByCredentials = async (username, password) => {
   const user = await User.findOne({ username });
   if (!user) {
-    throw new Error("No user found");
+    throw new Error('No user found');
   }
   const isMatch = await bcrypt.compare(password, user.password);
   if (!isMatch) {
-    throw new Error("Password is incorrect");
+    throw new Error('Password is incorrect');
   }
   return user;
 };
 userSchema.methods.follow = async function (username) {
   const owner = this;
-  if (owner.username === username) throw new Error("Bad request"); // can't follow self
+  if (owner.username === username) throw new Error('Bad request'); // can't follow self
   const user = await User.findOne({ username });
-  if (!user) throw new Error("No user found");
+  if (!user) throw new Error('No user found');
   const exist = await Follow.findOne({
     follower: owner._id,
     following: user._id,
   });
-  if (exist) throw new Error("Already following");
+  if (exist) throw new Error('Already following');
   const follow = new Follow({ follower: owner._id, following: user._id });
   await follow.save();
   return follow;
 };
 userSchema.methods.unfollow = async function (username) {
   const owner = this;
-  if (owner.username === username) throw new Error("Bad request");
+  if (owner.username === username) throw new Error('Bad request');
   const user = await User.findOne({ username });
-  if (!user) throw new Error("No user found");
+  if (!user) throw new Error('No user found');
   const follow = await Follow.findOne({
     follower: owner._id,
     following: user._id,
   });
-  if (!follow) throw new Error("No follow found");
+  if (!follow) throw new Error('No follow found');
   await follow.remove();
   return follow;
 };
-userSchema.pre("save", async function (next) {
+userSchema.pre('save', async function (next) {
   const user = this;
-  if (user.isModified("password")) {
+  if (user.isModified('password')) {
     user.password = await bcrypt.hash(user.password, 8);
   }
   next();
 });
-//delete user posts when user is removed
-userSchema.pre("remove", async function (next) {
+// delete user posts when user is removed
+userSchema.pre('remove', async function (next) {
   const user = this;
   await Post.deleteMany({ owner: user._id });
   await Like.deleteMany({ user: user._id });
@@ -181,6 +181,6 @@ userSchema.pre("remove", async function (next) {
   await Follow.deleteMany({ following: user._id });
   next();
 });
-const User = mongoose.model("User", userSchema);
+const User = mongoose.model('User', userSchema);
 
 module.exports = User;
